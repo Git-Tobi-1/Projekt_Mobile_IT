@@ -1,0 +1,132 @@
+package de.hka.projekt_mobile_it_user_management;
+
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.firebase.auth.FirebaseAuth;
+
+public class LoginActivity extends AppCompatActivity {
+
+    private FirebaseAuth mAuth;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_login);
+
+        mAuth = FirebaseAuth.getInstance();
+
+        SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        String email = sharedPreferences.getString("email", "");
+        String password = sharedPreferences.getString("password", "");
+
+        if (!email.isEmpty() && !password.isEmpty()) {
+            // Falls gespeicherte Anmeldedaten vorhanden sind, versuche die automatische Anmeldung
+            signInWithEmailAndPassword(email, password);
+        }
+
+        EditText emailEditText = findViewById(R.id.editTextEmail);
+        EditText passwordEditText = findViewById(R.id.editTextPassword);
+        Button loginButton = findViewById(R.id.buttonLogin);
+        Button registerButton = findViewById(R.id.buttonRegister);
+        TextView passwordStrengthTextView = findViewById(R.id.passwordStrengthTextView);
+
+        passwordEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                String password = editable.toString();
+                int strength = calculatePasswordStrength(password);
+
+                // Passwortrichtlinien anzeigen
+                if (password.length() < 8) {
+                    passwordStrengthTextView.setText("Passwort zu kurz");
+                    passwordStrengthTextView.setTextColor(Color.RED);
+                } else if (strength < 50) {
+                    passwordStrengthTextView.setText("Passwort: Schwach");
+                    passwordStrengthTextView.setTextColor(Color.RED);
+                } else if (strength < 75) {
+                    passwordStrengthTextView.setText("Passwort: Mittel");
+                    passwordStrengthTextView.setTextColor(Color.YELLOW);
+                } else {
+                    passwordStrengthTextView.setText("Passwort: Stark");
+                    passwordStrengthTextView.setTextColor(Color.GREEN);
+                }
+            }
+        });
+
+        loginButton.setOnClickListener(view -> {
+            String userEmail = emailEditText.getText().toString().trim();
+            String userPassword = passwordEditText.getText().toString().trim();
+
+            signInWithEmailAndPassword(userEmail, userPassword);
+        });
+
+        registerButton.setOnClickListener(view -> {
+            // Hier könnte die Logik zur Registrierung eines neuen Benutzers implementiert werden
+        });
+    }
+
+    private void signInWithEmailAndPassword(String email, String password) {
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Anmeldung erfolgreich
+                        // Speichern der Anmeldedaten in SharedPreferences für zukünftige Anmeldungen
+                        SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putString("email", email);
+                        editor.putString("password", password);
+                        editor.apply();
+
+                        // Hier könntest du die Hauptaktivität starten oder weitere Aktionen durchführen
+                    } else {
+                        // Anmeldung fehlgeschlagen
+                        Toast.makeText(LoginActivity.this, "Anmeldung fehlgeschlagen",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private int calculatePasswordStrength(String password) {
+        int strength = 0;
+
+        // Überprüfung auf Großbuchstaben
+        if (password.matches(".*[A-Z].*")) {
+            strength += 20;
+        }
+        // Überprüfung auf Kleinbuchstaben
+        if (password.matches(".*[a-z].*")) {
+            strength += 20;
+        }
+        // Überprüfung auf Zahlen
+        if (password.matches(".*\\d.*")) {
+            strength += 20;
+        }
+        // Überprüfung auf Sonderzeichen
+        if (password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+            strength += 20;
+        }
+        // Überprüfung auf Mindestlänge
+        if (password.length() >= 8) {
+            strength += 20;
+        }
+
+        return strength;
+    }
+
+}
